@@ -1,0 +1,45 @@
+## docker login gitlab.selit.ru:4567
+
+## docker build -t gitlab.selit.ru:4567/transport/stack/haproxy:1 .
+## docker push gitlab.selit.ru:4567/transport/stack/haproxy:1
+
+## docker network create --driver=overlay --attachable webgateway
+## docker volume create --name logs_data
+## docker stack deploy --with-registry-auth -c stack.yml test
+
+version: "3.4"
+
+services:
+  app:
+    image: strm/helloworld-http
+
+  haproxy:
+    image: gitlab.selit.ru:4567/transport/stack/haproxy:1
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+
+  elasticsearch:
+    image: elasticsearch:5.6.10
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+  kibana:
+    image: kibana:latest
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  logstash:
+    image: logstash:5.6.10
+    command: "-f /usr/share/logstash/pipeline/logstash.conf --config.reload.automatic"
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
